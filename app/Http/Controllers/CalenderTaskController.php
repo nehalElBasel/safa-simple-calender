@@ -15,7 +15,7 @@ class CalenderTaskController extends Controller
     {
         //valisate request
         request()->validate([
-            'start_date'          => 'required|date|date_format:Y-m-d',
+            'start_date'          => 'required|date|date_format:Y-m-d|after:yesterday',
             'chapter_no'          => 'required|integer|min:1',
             'chapter_sessions_no' => 'required|integer|min:1',
             'days_list'           => 'required|array',
@@ -44,15 +44,8 @@ class CalenderTaskController extends Controller
         //to be sure days is unique ans sorted
         $days_list = array_unique($days_list);
         sort($days_list);
-            //return $days_list;
-        // //append start date day to list of requested days
-        // if (!in_array($start_date_day, $days_list, true)) {
-        //     // array_push($days_list, $start_date_day);
-        //     //add start date day to top of array if it isn't exists
-        //     array_unshift($days_list, $start_date_day);
-        // }
-        // sort($days_list);
-        // return $days_list;
+        //return $days_list;
+
         //get total no of days to finish chapters
         $total_session = $chapter_no * $chapter_sessions_no;
 
@@ -66,39 +59,43 @@ class CalenderTaskController extends Controller
             ], 400);
         }
 
-        //loop to the no of weeks to finish the chapters then loop inner of list daya
+        /*
+        loop to the no of weeks to finish the chapters then loop inner of list daya
+        $divided_count means number of weeks and will add 1 for ignored date in first time
+         */
+
         $k = 0;
-        $first_session = false;
-        for ($i = 0; $i < $divided_count; $i++) {
+        //$first_session = false;
+        //if start date day exists in days list work so clender start with it for first session $i=0
+        if (in_array($start_date_day, $days_list)) {
+            $calender[0] = $start_date->format('Y-m-d');
+            $k++;
+        }
+
+        for ($i = 0; $i < $divided_count + 1; $i++) {
 
             for ($j = 0; $j < count($days_list); $j++) {
 
-                if ($days_list[$j] < $start_date_day && in_array($start_date_day,$days_list) &&  $first_session == false) {
-                    continue;
-                }
-                // if ($days_list[$j] < $start_date_day && $first_session == false) {
-                //     continue;
-                // }
-                // elseif ($days_list[$j] < $start_date_day && !in_array($start_date_day,$days_list) && $first_session == false) {
-
-                // }
-                if ($start_date_day == $days_list[$j] && $first_session == false) {
-                    $calender[$k] = $start_date->format('Y-m-d');
-                    $k++;
-                    $first_session = true;
-                    continue;
-                }
-                $calender[$k] = $start_date->next((int) $days_list[$j])->format('Y-m-d');
-                if (count($calender) == $total_session) {
+                if (count($calender) >= $total_session) {
                     break;
                 }
+                //ignore first session days if less than startdate
+                //if start date day exists in days list work so clender start with it for first session $i=0
+                if (($days_list[$j] < $start_date_day && $i == 0) || $days_list[$j] == $start_date_day && $i == 0) {
+                    //echo $start_date->format('Y-m-d');
+                    continue;
+                }
+
+                $calender[$k] = $start_date->next((int) $days_list[$j])->format('Y-m-d');
                 $k++;
+
             }
 
         }
         return response()->json([
             'success'  => true,
             'sessions' => $calender,
+            'count'    => count($calender),
         ], 200);
 
     }
